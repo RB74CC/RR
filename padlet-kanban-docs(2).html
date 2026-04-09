@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Padlet Kanban – SharePoint</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#F4F2EE;--surface:#FFFFFF;--surface2:#F0EDE8;--border:#E2DDD7;--border-strong:#C8C2BA;
+    --text:#1A1714;--text-muted:#7A746D;--text-light:#A8A29C;
+    --col-todo-bg:#EEF2FF;--col-todo-text:#3730A3;--col-todo-border:#C7D2FE;
+    --col-progress-bg:#FFF7ED;--col-progress-text:#9A3412;--col-progress-border:#FED7AA;
+    --col-review-bg:#FDF4FF;--col-review-text:#6B21A8;--col-review-border:#E9D5FF;
+    --col-done-bg:#F0FDF4;--col-done-text:#166534;--col-done-border:#BBF7D0;
+    --shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+    --shadow-hover:0 4px 12px rgba(0,0,0,.10);
+    --radius:10px;--radius-sm:6px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* Header */
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+  .header-left{display:flex;align-items:center;gap:14px;}
+  .logo-mark{width:36px;height:36px;border-radius:8px;background:var(--text);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .logo-mark svg{width:18px;height:18px;}
+  .board-name{font-size:17px;font-weight:600;color:var(--text);outline:none;border:none;background:transparent;cursor:text;}
+  .board-name:focus{border-bottom:1.5px solid var(--border-strong);}
+  .header-actions{display:flex;align-items:center;gap:8px;}
+  .btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);cursor:pointer;transition:background .15s,box-shadow .15s;display:flex;align-items:center;gap:6px;}
+  .btn:hover{background:var(--surface2);box-shadow:var(--shadow);}
+  .btn-primary{background:var(--text);color:#fff;border-color:var(--text);}
+  .btn-primary:hover{background:#333;}
+
+  /* Toolbar */
+  .toolbar{padding:12px 28px;display:flex;align-items:center;gap:10px;background:var(--bg);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .filter-label{font-size:12px;color:var(--text-muted);margin-right:4px;}
+  .filter-btn{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:5px 12px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-muted);cursor:pointer;transition:all .15s;}
+  .filter-btn:hover,.filter-btn.active{background:var(--text);color:#fff;border-color:var(--text);}
+  .sep{width:1px;height:20px;background:var(--border-strong);margin:0 4px;}
+  .search-box{font-family:'DM Sans',sans-serif;font-size:13px;padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);width:200px;outline:none;margin-left:auto;}
+  .search-box:focus{border-color:var(--border-strong);}
+  .search-box::placeholder{color:var(--text-light);}
+
+  /* Board */
+  .board{padding:24px 28px;display:flex;gap:16px;align-items:flex-start;overflow-x:auto;min-height:calc(100vh - 130px);}
+
+  /* Column */
+  .column{width:272px;flex-shrink:0;display:flex;flex-direction:column;}
+  .col-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:0 2px;}
+  .col-pill{font-size:11px;font-weight:600;letter-spacing:.03em;padding:4px 10px;border-radius:999px;border:1px solid;text-transform:uppercase;}
+  .todo .col-pill{background:var(--col-todo-bg);color:var(--col-todo-text);border-color:var(--col-todo-border);}
+  .progress .col-pill{background:var(--col-progress-bg);color:var(--col-progress-text);border-color:var(--col-progress-border);}
+  .review .col-pill{background:var(--col-review-bg);color:var(--col-review-text);border-color:var(--col-review-border);}
+  .done .col-pill{background:var(--col-done-bg);color:var(--col-done-text);border-color:var(--col-done-border);}
+  .col-count{font-size:12px;font-weight:500;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--text-muted);font-family:'DM Mono',monospace;}
+
+  /* Drop zone */
+  .cards-zone{display:flex;flex-direction:column;gap:8px;min-height:60px;border-radius:var(--radius);padding:2px;transition:background .15s;}
+  .cards-zone.drag-over{background:rgba(0,0,0,.03);}
+
+  /* Card */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 15px;cursor:grab;box-shadow:var(--shadow);transition:box-shadow .18s,transform .15s,opacity .15s;animation:cardIn .25s ease both;}
+  @keyframes cardIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .card:hover{box-shadow:var(--shadow-hover);transform:translateY(-1px);}
+  .card:active{cursor:grabbing;}
+  .card.dragging{opacity:.35;box-shadow:none;}
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  .card-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;flex:1;}
+  .card-menu-btn{background:none;border:none;cursor:pointer;color:var(--text-light);font-size:16px;line-height:1;padding:0 2px;border-radius:4px;transition:color .1s,background .1s;flex-shrink:0;}
+  .card-menu-btn:hover{color:var(--text);background:var(--surface2);}
+  .card-body{font-size:12px;color:var(--text-muted);line-height:1.55;margin-bottom:10px;}
+  .card-footer{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .tag{font-size:11px;font-weight:500;padding:3px 9px;border-radius:999px;border:1px solid;font-family:'DM Mono',monospace;}
+  .tag-blue{background:var(--col-todo-bg);color:var(--col-todo-text);border-color:var(--col-todo-border);}
+  .tag-orange{background:var(--col-progress-bg);color:var(--col-progress-text);border-color:var(--col-progress-border);}
+  .tag-purple{background:var(--col-review-bg);color:var(--col-review-text);border-color:var(--col-review-border);}
+  .tag-green{background:var(--col-done-bg);color:var(--col-done-text);border-color:var(--col-done-border);}
+  .tag-gray{background:var(--surface2);color:var(--text-muted);border-color:var(--border);}
+  .avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;margin-left:auto;flex-shrink:0;border:1.5px solid var(--surface);}
+  .av-a{background:#C7D2FE;color:#3730A3;}
+  .av-b{background:#FED7AA;color:#9A3412;}
+  .av-c{background:#E9D5FF;color:#6B21A8;}
+  .av-d{background:#BBF7D0;color:#166534;}
+
+  /* ── Attachments on card ── */
+  .card-attachments{margin-top:10px;display:flex;flex-direction:column;gap:5px;}
+  .attach-item{display:flex;align-items:center;gap:7px;padding:5px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;color:var(--text-muted);cursor:default;}
+  .attach-item .attach-icon{font-size:14px;flex-shrink:0;}
+  .attach-item .attach-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-weight:500;}
+  .attach-item .attach-size{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-light);}
+  .attach-item .attach-dl{background:none;border:none;cursor:pointer;color:var(--text-light);font-size:13px;padding:2px 4px;border-radius:4px;transition:color .1s;}
+  .attach-item .attach-dl:hover{color:var(--text);}
+  .attach-item .attach-del{background:none;border:none;cursor:pointer;color:var(--text-light);font-size:12px;padding:2px 4px;border-radius:4px;transition:color .1s;}
+  .attach-item .attach-del:hover{color:#DC2626;}
+
+  /* Drop zone on card */
+  .card-drop-zone{margin-top:8px;border:1.5px dashed var(--border-strong);border-radius:var(--radius-sm);padding:8px;text-align:center;font-size:11px;color:var(--text-light);cursor:pointer;transition:background .15s,border-color .15s;display:none;}
+  .card-drop-zone.visible{display:block;}
+  .card-drop-zone:hover,.card-drop-zone.dragover{background:var(--col-todo-bg);border-color:var(--col-todo-text);color:var(--col-todo-text);}
+  .card-drop-zone input[type=file]{display:none;}
+
+  /* Attach toggle */
+  .attach-toggle-btn{background:none;border:none;cursor:pointer;font-size:11px;color:var(--text-light);display:flex;align-items:center;gap:4px;padding:2px 0;margin-top:6px;transition:color .1s;}
+  .attach-toggle-btn:hover{color:var(--text);}
+
+  /* Add card btn */
+  .add-card-btn{margin-top:8px;width:100%;padding:9px;border-radius:var(--radius);border:1.5px dashed var(--border-strong);background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-muted);transition:background .15s,color .15s,border-color .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .add-card-btn:hover{background:var(--surface);color:var(--text);border-color:var(--text-muted);}
+
+  /* Add col btn */
+  .add-col-btn{width:56px;height:56px;border-radius:50%;border:1.5px dashed var(--border-strong);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:22px;transition:background .15s,color .15s;flex-shrink:0;align-self:flex-start;margin-top:34px;}
+  .add-col-btn:hover{background:var(--text);color:#fff;border-color:var(--text);}
+
+  /* Modal */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(20,17,14,.45);z-index:100;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:14px;border:1px solid var(--border);padding:28px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.18);animation:modalIn .2s ease both;max-height:90vh;overflow-y:auto;}
+  @keyframes modalIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  .modal h3{font-size:16px;font-weight:600;margin-bottom:18px;}
+  .modal label{font-size:12px;font-weight:500;color:var(--text-muted);display:block;margin-bottom:5px;margin-top:14px;}
+  .modal input,.modal textarea,.modal select{font-family:'DM Sans',sans-serif;font-size:13px;width:100%;padding:9px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);outline:none;transition:border-color .15s;resize:vertical;}
+  .modal input:focus,.modal textarea:focus,.modal select:focus{border-color:var(--border-strong);background:var(--surface);}
+  .modal textarea{min-height:72px;}
+  .modal-actions{display:flex;gap:8px;margin-top:20px;justify-content:flex-end;}
+
+  /* File upload in modal */
+  .file-upload-area{margin-top:6px;border:1.5px dashed var(--border-strong);border-radius:var(--radius-sm);padding:16px;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;}
+  .file-upload-area:hover,.file-upload-area.dragover{background:var(--col-todo-bg);border-color:var(--col-todo-text);}
+  .file-upload-area input{display:none;}
+  .file-upload-area p{font-size:12px;color:var(--text-muted);margin-top:4px;}
+  .file-upload-area .upload-icon{font-size:22px;}
+  .file-list{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+  .file-list-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;}
+  .file-list-item .fi-icon{font-size:15px;}
+  .file-list-item .fi-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--text);}
+  .file-list-item .fi-size{font-family:'DM Mono',monospace;font-size:10px;color:var(--text-light);}
+  .file-list-item .fi-del{background:none;border:none;cursor:pointer;color:var(--text-light);font-size:14px;padding:0 3px;border-radius:3px;}
+  .file-list-item .fi-del:hover{color:#DC2626;}
+
+  /* Context menu */
+  .ctx-menu{position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-hover);padding:4px;min-width:160px;display:none;}
+  .ctx-menu.open{display:block;}
+  .ctx-item{padding:8px 12px;font-size:13px;border-radius:5px;cursor:pointer;color:var(--text);transition:background .1s;display:flex;align-items:center;gap:8px;}
+  .ctx-item:hover{background:var(--surface2);}
+  .ctx-item.danger{color:#DC2626;}
+  .ctx-item.danger:hover{background:#FEF2F2;}
+
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:999px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-mark">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="1" y="1" width="7" height="7" rx="2" fill="white" opacity=".9"/><rect x="10" y="1" width="7" height="7" rx="2" fill="white" opacity=".6"/><rect x="1" y="10" width="7" height="7" rx="2" fill="white" opacity=".6"/><rect x="10" y="10" width="7" height="7" rx="2" fill="white" opacity=".35"/></svg>
+    </div>
+    <input class="board-name" id="boardName" value="Mon Padlet Kanban" type="text" spellcheck="false"/>
+  </div>
+  <div class="header-actions">
+    <button class="btn" onclick="exportBoard()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v9M4 6l4 4 4-4M2 12h12v2H2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Exporter
+    </button>
+    <button class="btn btn-primary" onclick="openModal()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Nouvelle carte
+    </button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <span class="filter-label">Filtrer :</span>
+  <button class="filter-btn active" onclick="filterBy('all',this)">Tout</button>
+  <button class="filter-btn" onclick="filterBy('Recherche',this)">Recherche</button>
+  <button class="filter-btn" onclick="filterBy('Design',this)">Design</button>
+  <button class="filter-btn" onclick="filterBy('Dev',this)">Dev</button>
+  <button class="filter-btn" onclick="filterBy('Réunion',this)">Réunion</button>
+  <button class="filter-btn" onclick="filterBy('Validation',this)">Validation</button>
+  <div class="sep"></div>
+  <input class="search-box" type="text" placeholder="Rechercher une carte…" oninput="searchCards(this.value)"/>
+</div>
+
+<div class="board" id="board">
+
+  <div class="column todo" data-col="todo">
+    <div class="col-header">
+      <span class="col-pill">À faire</span>
+      <span class="col-count" id="cnt-todo">3</span>
+    </div>
+    <div class="cards-zone" id="zone-todo">
+      <div class="card" draggable="true" data-tag="Recherche">
+        <div class="card-top"><span class="card-title">Recherche utilisateur</span><button class="card-menu-btn" onclick="showCtx(event,this)">⋯</button></div>
+        <div class="card-body">Identifier les besoins principaux du projet et analyser les parcours utilisateurs.</div>
+        <div class="card-footer"><span class="tag tag-blue">Recherche</span><div class="avatar av-a">AL</div></div>
+        <div class="card-attachments"></div>
+        <button class="attach-toggle-btn" onclick="toggleDropZone(this)">📎 Ajouter un document</button>
+        <div class="card-drop-zone" onclick="triggerFileInput(this)" ondragover="dzDragOver(event,this)" ondragleave="dzDragLeave(this)" ondrop="dzDrop(event,this)">
+          <div>📄 Déposer un fichier ici ou <u>parcourir</u></div>
+          <p>PDF, Word, Excel, images…</p>
+          <input type="file" multiple onchange="handleFiles(this)">
+        </div>
+      </div>
+      <div class="card" draggable="true" data-tag="Design">
+        <div class="card-top"><span class="card-title">Brief créatif</span><button class="card-menu-btn" onclick="showCtx(event,this)">⋯</button></div>
+        <div class="card-body">Rédiger le cahier des charges visuel et la direction artistique.</div>
+        <div class="card-footer"><span class="tag tag-orange">Design</span><div class="avatar av-c">MR</div></div>
+        <div class="card-attachments"></div>
+        <button class="attach-toggle-btn" onclick="toggleDropZone(this)">📎 Ajouter un document</button>
+        <div class="card-drop-zone" onclick="triggerFileInput(this)" ondragover="dzDragOver(event,this)" ondragleave="dzDragLeave(this)" ondrop="dzDrop(event,this)">
+          <div>📄 Déposer un fichier ici ou <u>parcourir</u></div>
+          <p>PDF, Word, Excel, images…</p>
+          <input type="file" multiple onchange="handleFiles(this)">
+        </div>
+      </div>
+      <div class="card" draggable="true" data-tag="Réunion">
+        <div class="card-top"><span class="card-title">Réunion de lancement</span><button class="card-menu-btn" onclick="showCtx(event,this)">⋯</button></div>
+        <div class="card-body">Planifier le kick-off avec l'équipe projet et les parties prenantes.</div>
+        <div class="card-footer"><span class="tag tag-purple">Réunion</span><div class="avatar av-b">JD</div></div>
+        <div class="card-attachments"></div>
+        <button class="attach-toggle-btn" onclick="toggleDropZone(this)">📎 Ajouter un document</button>
+        <div class="card-drop-zone" onclick="triggerFileInput(this)" ondragover="dzDragOver(event,this)" ondragleave="dzDragLeave(this)" ondrop="dzDrop(event,this)">
+          <div>📄 Déposer un fichier ici ou <u>parcourir</u></div>
+          <p>PDF, Word, Excel, images…</p>
+          <input type="file" multiple onchange="handleFiles(this)">
+        </div>
+      </div>
+    </div>
+    <button class="add-card-btn" onclick="openModal('todo')">+ Ajouter une carte</button>
+  </div>
+
+  <div class="column progress" data-col="progress">
+    <div class="col-header">
+      <span class="col-pill">En cours</span>
+      <span class="col-count" id="cnt-progress">2</span>
+    </div>
+    <div class="cards-zone" id="zone-progress">
+      <div class="card" draggable="true" data-tag="Design">
+        <div class="card-top"><span class="card-title">Maquettes UI</span><button class="card-menu-btn" onclick="showCtx(event,this)">⋯</button></div>
+        <div class="card-body">Créer les wireframes et maquettes haute fidélité des écrans principaux.</div>
+        <div class="card-footer"><span class="tag tag-orange">Design</span><div class="avatar av-c">MR</div></div>
+        <div class="card-attachments"></div>
+        <button class="attach-toggle-btn" onclick="toggleDropZone(this)">📎 Ajouter un document</button>
+        <div class="card-drop-zone" onclick="triggerFileInput(this)" ondragover="dzDragOver(event,this)" ondragleave="dzDragLeave(this)" ondrop="dzDrop(event,this)">
+          <div>📄 Déposer un fichier ici ou <u>parcourir</u></div>
+          <p>PDF, Word, Excel, images…</p>
+          <input type="file" multiple onchange="handleFiles(this)">
+        </div>
+      </div>
+      <div class="card" draggable="true" data-tag="Dev">
+        <div class="card-top"><span class="card-title">Base de données</span><button class="card-menu-btn" onclick="showCtx(event,this)">⋯</button></div>
+        <div class="card-body">Modéliser le schéma de données et définir les relations entre les entités.</div>
+        <div class="card-footer"><span class="tag tag-blue">Dev</span><div class="avatar av-a">AL</div></div>
+        <div class="card-attachments"></div>
+        <button class="attach-toggle-btn" onclick="toggleDropZone(this)">📎 Ajouter un document</button>
+        <div class="card-drop-zone" onclick="triggerFileInput(this)" ondragover="dzDragOver(event,this)" ondragleave="dzDragLeave(this)" ondrop="dzDrop(event,this)">
+          <div>📄 Déposer un fichier ici ou <u>parcourir</u></div>
+          <p>PDF, Word, Excel, images…</p>
+          <input type="file" multiple onchange="handleFiles(this)">
+        </div>
+      </div>
+    </div>
+    <button class="add-card-btn" onclick="openModal('progress')">+ Ajouter une carte</button>
+  </div>
+
+  <div class="column review" data-col="review">
+    <div class="col-header">
+      <span class="col-pill">En révision</span>
+      <span class="col-count" id="cnt-review">1</span>
+    </div>
+    <div class="cards-zone" id="zone-review">
+      <div class="card" draggable="true" data-tag="Validation">
+        <div class="card-top"><span class="card-title">Prototype cliquable</span><button class="card-menu-btn" onclick="showCtx(event,this)">⋯</button></div>
+        <div class="card-body">Validation du prototype interactif par le client avant développement.</div>
+        <div class="card-footer"><span class="tag tag-purple">Validation</span><div class="avatar av-b">JD</div></div>
+        <div class="card-attachments"></div>
+        <button class="attach-toggle-btn" onclick="toggleDropZone(this)">📎 Ajouter un document</button>
+        <div class="card-drop-zone" onclick="triggerFileInput(this)" ondragover="dzDragOver(event,this)" ondragleave="dzDragLeave(this)" ondrop="dzDrop(event,this)">
+          <div>📄 Déposer un fichier ici ou <u>parcourir</u></div>
+          <p>PDF, Word, Excel, images…</p>
+          <input type="file" multiple onchange="handleFiles(this)">
+        </div>
+      </div>
+    </div>
+    <button class="add-card-btn" onclick="openModal('review')">+ Ajouter une carte</button>
+  </div>
+
+  <div class="column done" data-col="done">
+    <div class="col-header">
+      <span class="col-pill">Terminé</span>
+      <span class="col-count" id="cnt-done">2</span>
+    </div>
+    <div class="cards-zone" id="zone-done">
+      <div class="card" draggable="true" data-tag="Recherche">
+        <div class="card-top"><span class="card-title">Analyse concurrentielle</span><button class="card-menu-btn" onclick="showCtx(event,this)">⋯</button></div>
+        <div class="card-body">Étude approfondie de 5 concurrents directs identifiés sur le marché.</div>
+        <div class="card-footer"><span class="tag tag-green">Recherche</span><div class="avatar av-d">PL</div></div>
+        <div class="card-attachments"></div>
+        <button class="attach-toggle-btn" onclick="toggleDropZone(this)">📎 Ajouter un document</button>
+        <div class="card-drop-zone" onclick="triggerFileInput(this)" ondragover="dzDragOver(event,this)" ondragleave="dzDragLeave(this)" ondrop="dzDrop(event,this)">
+          <div>📄 Déposer un fichier ici ou <u>parcourir</u></div>
+          <p>PDF, Word, Excel, images…</p>
+          <input type="file" multiple onchange="handleFiles(this)">
+        </div>
+      </div>
+      <div class="card" draggable="true" data-tag="Design">
+        <div class="card-top"><span class="card-title">Charte graphique</span><button class="card-menu-btn" onclick="showCtx(event,this)">⋯</button></div>
+        <div class="card-body">Couleurs, typographies, iconographie et grille de mise en page validées.</div>
+        <div class="card-footer"><span class="tag tag-green">Design</span><div class="avatar av-c">MR</div></div>
+        <div class="card-attachments"></div>
+        <button class="attach-toggle-btn" onclick="toggleDropZone(this)">📎 Ajouter un document</button>
+        <div class="card-drop-zone" onclick="triggerFileInput(this)" ondragover="dzDragOver(event,this)" ondragleave="dzDragLeave(this)" ondrop="dzDrop(event,this)">
+          <div>📄 Déposer un fichier ici ou <u>parcourir</u></div>
+          <p>PDF, Word, Excel, images…</p>
+          <input type="file" multiple onchange="handleFiles(this)">
+        </div>
+      </div>
+    </div>
+    <button class="add-card-btn" onclick="openModal('done')">+ Ajouter une carte</button>
+  </div>
+
+  <button class="add-col-btn" title="Ajouter une colonne" onclick="addColumn()">+</button>
+</div>
+
+<!-- Modal nouvelle carte -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <h3>Nouvelle carte</h3>
+    <label>Titre *</label>
+    <input id="cardTitle" type="text" placeholder="Titre de la carte"/>
+    <label>Description</label>
+    <textarea id="cardDesc" placeholder="Ajouter une description…"></textarea>
+    <label>Étiquette</label>
+    <select id="cardTag">
+      <option value="Recherche">Recherche</option>
+      <option value="Design">Design</option>
+      <option value="Dev">Dev</option>
+      <option value="Réunion">Réunion</option>
+      <option value="Validation">Validation</option>
+      <option value="Autre">Autre</option>
+    </select>
+    <label>Assigné à</label>
+    <input id="cardAssignee" type="text" placeholder="Initiales (ex : AL)" maxlength="3"/>
+    <label>Colonne</label>
+    <select id="cardCol">
+      <option value="todo">À faire</option>
+      <option value="progress">En cours</option>
+      <option value="review">En révision</option>
+      <option value="done">Terminé</option>
+    </select>
+    <label>Documents joints</label>
+    <div class="file-upload-area" id="modalDropArea" onclick="document.getElementById('modalFileInput').click()" ondragover="modalDragOver(event)" ondragleave="modalDragLeave()" ondrop="modalDrop(event)">
+      <div class="upload-icon">📎</div>
+      <div style="font-size:13px;font-weight:500;color:var(--text);margin-top:4px;">Déposer des fichiers ici</div>
+      <p>ou cliquer pour parcourir — PDF, Word, Excel, images…</p>
+      <input type="file" id="modalFileInput" multiple onchange="modalAddFiles(this.files)">
+    </div>
+    <div class="file-list" id="modalFileList"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="submitCard()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxMove()">↪ Déplacer vers…</div>
+  <div class="ctx-item" onclick="ctxAddDoc()">📎 Joindre un document</div>
+  <div class="ctx-item" onclick="ctxEdit()">✏️ Modifier le titre</div>
+  <div class="ctx-item danger" onclick="ctxDelete()">🗑 Supprimer</div>
+</div>
+
+<script>
+const tagClassMap={Recherche:'tag-blue',Design:'tag-orange',Dev:'tag-blue',Réunion:'tag-purple',Validation:'tag-purple',Autre:'tag-gray'};
+const avColors=['av-a','av-b','av-c','av-d'];
+let targetCol='todo', activeCtxCard=null, dragged=null;
+let pendingModalFiles=[];
+
+/* ── helpers ── */
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtSize(b){if(b<1024)return b+'B';if(b<1048576)return Math.round(b/1024)+'KB';return(b/1048576).toFixed(1)+'MB';}
+function fileIcon(name){
+  const ext=name.split('.').pop().toLowerCase();
+  if(['pdf'].includes(ext)) return '📕';
+  if(['doc','docx'].includes(ext)) return '📘';
+  if(['xls','xlsx','csv'].includes(ext)) return '📗';
+  if(['ppt','pptx'].includes(ext)) return '📙';
+  if(['png','jpg','jpeg','gif','webp','svg'].includes(ext)) return '🖼️';
+  if(['zip','rar','7z'].includes(ext)) return '🗜️';
+  if(['txt','md'].includes(ext)) return '📄';
+  return '📎';
+}
+
+/* ── drag/drop cards ── */
+document.querySelectorAll('.card').forEach(initCard);
+function initCard(card){
+  card.addEventListener('dragstart',e=>{
+    if(e.target.classList.contains('card-drop-zone')||e.target.tagName==='INPUT'||e.target.tagName==='BUTTON') return;
+    dragged=card;
+    setTimeout(()=>card.classList.add('dragging'),0);
+  });
+  card.addEventListener('dragend',()=>{card.classList.remove('dragging');dragged=null;});
+}
+
+document.querySelectorAll('.cards-zone').forEach(initZone);
+function initZone(zone){
+  zone.addEventListener('dragover',e=>{e.preventDefault();if(dragged)zone.classList.add('drag-over');});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();zone.classList.remove('drag-over');
+    if(dragged&&dragged.parentElement!==zone){
+      const from=dragged.parentElement.id.replace('zone-','');
+      zone.appendChild(dragged);
+      updateCount(from);updateCount(zone.id.replace('zone-',''));
+    }
+  });
+}
+function updateCount(col){
+  const z=document.getElementById('zone-'+col);
+  if(!z)return;
+  const n=z.querySelectorAll('.card:not([style*="display: none"])').length;
+  const el=document.getElementById('cnt-'+col);
+  if(el)el.textContent=n;
+}
+
+/* ── attachment drop zone on card ── */
+function toggleDropZone(btn){
+  const dz=btn.nextElementSibling;
+  dz.classList.toggle('visible');
+  btn.textContent=dz.classList.contains('visible')?'▲ Masquer':'📎 Ajouter un document';
+}
+function triggerFileInput(dz){dz.querySelector('input[type=file]').click();}
+function dzDragOver(e,dz){e.preventDefault();e.stopPropagation();dz.classList.add('dragover');}
+function dzDragLeave(dz){dz.classList.remove('dragover');}
+function dzDrop(e,dz){
+  e.preventDefault();e.stopPropagation();dz.classList.remove('dragover');
+  addFilesToCard(dz.closest('.card'),e.dataTransfer.files);
+}
+function handleFiles(input){
+  addFilesToCard(input.closest('.card'),input.files);
+  input.value='';
+}
+
+function addFilesToCard(card,files){
+  const container=card.querySelector('.card-attachments');
+  Array.from(files).forEach(file=>{
+    const url=URL.createObjectURL(file);
+    const item=document.createElement('div');
+    item.className='attach-item';
+    item.innerHTML=`
+      <span class="attach-icon">${fileIcon(file.name)}</span>
+      <span class="attach-name" title="${escHtml(file.name)}">${escHtml(file.name)}</span>
+      <span class="attach-size">${fmtSize(file.size)}</span>
+      <a class="attach-dl" href="${url}" download="${escHtml(file.name)}" title="Télécharger" onclick="event.stopPropagation()">⬇</a>
+      <button class="attach-del" title="Supprimer" onclick="this.closest('.attach-item').remove()">✕</button>
+    `;
+    container.appendChild(item);
+  });
+  // hide drop zone after adding
+  const dz=card.querySelector('.card-drop-zone');
+  const btn=card.querySelector('.attach-toggle-btn');
+  if(dz&&dz.classList.contains('visible')){dz.classList.remove('visible');if(btn)btn.textContent='📎 Ajouter un document';}
+}
+
+/* ── modal ── */
+function openModal(col){
+  targetCol=col||'todo';
+  document.getElementById('cardCol').value=targetCol;
+  ['cardTitle','cardDesc','cardAssignee'].forEach(id=>document.getElementById(id).value='');
+  pendingModalFiles=[];
+  document.getElementById('modalFileList').innerHTML='';
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('cardTitle').focus(),100);
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+
+function modalDragOver(e){e.preventDefault();document.getElementById('modalDropArea').classList.add('dragover');}
+function modalDragLeave(){document.getElementById('modalDropArea').classList.remove('dragover');}
+function modalDrop(e){e.preventDefault();document.getElementById('modalDropArea').classList.remove('dragover');modalAddFiles(e.dataTransfer.files);}
+function modalAddFiles(files){
+  Array.from(files).forEach(f=>{pendingModalFiles.push(f);renderModalFileList();});
+}
+function renderModalFileList(){
+  const list=document.getElementById('modalFileList');
+  list.innerHTML='';
+  pendingModalFiles.forEach((f,i)=>{
+    const item=document.createElement('div');
+    item.className='file-list-item';
+    item.innerHTML=`
+      <span class="fi-icon">${fileIcon(f.name)}</span>
+      <span class="fi-name" title="${escHtml(f.name)}">${escHtml(f.name)}</span>
+      <span class="fi-size">${fmtSize(f.size)}</span>
+      <button class="fi-del" onclick="pendingModalFiles.splice(${i},1);renderModalFileList()">✕</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function submitCard(){
+  const title=document.getElementById('cardTitle').value.trim();
+  if(!title){document.getElementById('cardTitle').focus();return;}
+  const desc=document.getElementById('cardDesc').value.trim();
+  const tag=document.getElementById('cardTag').value;
+  const assignee=document.getElementById('cardAssignee').value.trim().toUpperCase()||'??';
+  const col=document.getElementById('cardCol').value;
+  const tagCls=tagClassMap[tag]||'tag-gray';
+  const avCls=avColors[Math.floor(Math.random()*avColors.length)];
+  const zoneId='zone-'+col;
+
+  const card=document.createElement('div');
+  card.className='card';card.draggable=true;card.dataset.tag=tag;
+  card.innerHTML=`
+    <div class="card-top"><span class="card-title">${escHtml(title)}</span><button class="card-menu-btn" onclick="showCtx(event,this)">⋯</button></div>
+    ${desc?`<div class="card-body">${escHtml(desc)}</div>`:''}
+    <div class="card-footer"><span class="tag ${tagCls}">${escHtml(tag)}</span><div class="avatar ${avCls}">${escHtml(assignee.slice(0,3))}</div></div>
+    <div class="card-attachments"></div>
+    <button class="attach-toggle-btn" onclick="toggleDropZone(this)">📎 Ajouter un document</button>
+    <div class="card-drop-zone" onclick="triggerFileInput(this)" ondragover="dzDragOver(event,this)" ondragleave="dzDragLeave(this)" ondrop="dzDrop(event,this)">
+      <div>📄 Déposer un fichier ici ou <u>parcourir</u></div>
+      <p>PDF, Word, Excel, images…</p>
+      <input type="file" multiple onchange="handleFiles(this)">
+    </div>
+  `;
+  initCard(card);
+  if(pendingModalFiles.length>0) addFilesToCard(card,pendingModalFiles);
+  const zone=document.getElementById(zoneId);
+  if(zone){zone.appendChild(card);updateCount(col);}
+  closeModal();
+}
+
+/* ── context menu ── */
+function showCtx(e,btn){
+  e.stopPropagation();
+  activeCtxCard=btn.closest('.card');
+  const menu=document.getElementById('ctxMenu');
+  menu.style.left=Math.min(e.clientX,window.innerWidth-170)+'px';
+  menu.style.top=Math.min(e.clientY,window.innerHeight-160)+'px';
+  menu.classList.add('open');
+}
+document.addEventListener('click',()=>document.getElementById('ctxMenu').classList.remove('open'));
+
+function ctxDelete(){
+  if(!activeCtxCard)return;
+  const col=activeCtxCard.parentElement.id.replace('zone-','');
+  activeCtxCard.style.transition='opacity .2s,transform .2s';
+  activeCtxCard.style.opacity='0';activeCtxCard.style.transform='scale(.95)';
+  setTimeout(()=>{activeCtxCard.remove();updateCount(col);},200);
+}
+function ctxMove(){
+  if(!activeCtxCard)return;
+  const cols=['todo','progress','review','done'];
+  const cur=activeCtxCard.parentElement.id.replace('zone-','');
+  const next=cols[(cols.indexOf(cur)+1)%cols.length];
+  const from=activeCtxCard.parentElement;
+  document.getElementById('zone-'+next).appendChild(activeCtxCard);
+  updateCount(cur);updateCount(next);
+}
+function ctxEdit(){
+  if(!activeCtxCard)return;
+  const t=activeCtxCard.querySelector('.card-title');
+  const val=prompt('Nouveau titre :',t.textContent);
+  if(val&&val.trim())t.textContent=val.trim();
+}
+function ctxAddDoc(){
+  if(!activeCtxCard)return;
+  const dz=activeCtxCard.querySelector('.card-drop-zone');
+  const btn=activeCtxCard.querySelector('.attach-toggle-btn');
+  dz.classList.add('visible');
+  if(btn)btn.textContent='▲ Masquer';
+  dz.querySelector('input[type=file]').click();
+}
+
+/* ── filter & search ── */
+function filterBy(tag,btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.card').forEach(c=>{c.style.display=(tag==='all'||c.dataset.tag===tag)?'':'none';});
+  ['todo','progress','review','done'].forEach(updateCount);
+}
+function searchCards(q){
+  const ql=q.toLowerCase();
+  document.querySelectorAll('.card').forEach(c=>{
+    c.style.display=c.textContent.toLowerCase().includes(ql)?'':'none';
+  });
+  ['todo','progress','review','done'].forEach(updateCount);
+}
+
+/* ── add column ── */
+function addColumn(){
+  const name=prompt('Nom de la nouvelle colonne :');if(!name)return;
+  const id='col-'+Date.now();
+  const board=document.getElementById('board');
+  const addBtn=board.querySelector('.add-col-btn');
+  const colEl=document.createElement('div');
+  colEl.className='column';colEl.dataset.col=id;
+  colEl.innerHTML=`
+    <div class="col-header">
+      <span class="col-pill" style="background:var(--surface2);color:var(--text-muted);border-color:var(--border-strong);">${escHtml(name)}</span>
+      <span class="col-count" id="cnt-${id}">0</span>
+    </div>
+    <div class="cards-zone" id="zone-${id}"></div>
+    <button class="add-card-btn" onclick="openModalForCol('${id}')">+ Ajouter une carte</button>
+  `;
+  board.insertBefore(colEl,addBtn);
+  initZone(colEl.querySelector('.cards-zone'));
+  const sel=document.getElementById('cardCol');
+  const opt=document.createElement('option');opt.value=id;opt.textContent=name;sel.appendChild(opt);
+}
+function openModalForCol(id){targetCol=id;openModal(id);}
+
+/* ── export ── */
+function exportBoard(){
+  const data={title:document.getElementById('boardName').value,columns:[]};
+  document.querySelectorAll('.column').forEach(col=>{
+    const cards=[];
+    col.querySelectorAll('.card').forEach(card=>{
+      const attachments=[];
+      card.querySelectorAll('.attach-item .attach-name').forEach(n=>attachments.push(n.textContent));
+      cards.push({title:card.querySelector('.card-title').textContent,body:card.querySelector('.card-body')?card.querySelector('.card-body').textContent:'',tag:card.dataset.tag||'',attachments});
+    });
+    data.columns.push({name:col.querySelector('.col-pill').textContent,cards});
+  });
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='padlet-kanban.json';a.click();
+}
+</script>
+</body>
+</html>
